@@ -4,9 +4,10 @@ import numpy as np
 import joblib
 import plotly.graph_objects as go
 import io
+import os
 
 # ============================================
-#   Day 21 - Suggestions + Download Report
+#   India Salary Predictor - Final Version
 # ============================================
 
 st.set_page_config(
@@ -16,17 +17,48 @@ st.set_page_config(
 )
 
 # ============================================
+# Custom CSS
+# ============================================
+st.markdown("""
+<style>
+    .suggestion-card {
+        padding: 15px;
+        border-radius: 10px;
+        margin: 5px;
+        height: 150px;
+    }
+    .share-btn {
+        background: #1D9E75;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .metric-card {
+        background: #1E1E1E;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #333;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 28px !important;
+        color: #1D9E75 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================
 # Load Model
 # ============================================
 @st.cache_resource
 def load_model_files():
-    import os
     BASE = os.path.dirname(__file__)
     model       = joblib.load(os.path.join(BASE, 'final_model_v2.pkl'))
     le_role     = joblib.load(os.path.join(BASE, 'encoder_role.pkl'))
     le_city     = joblib.load(os.path.join(BASE, 'encoder_city.pkl'))
     le_industry = joblib.load(os.path.join(BASE, 'encoder_industry.pkl'))
-    scaler      = joblib.load(os.path.join(BASE, 'scaler.pkl'))    
+    scaler      = joblib.load(os.path.join(BASE, 'scaler.pkl'))
     return model, le_role, le_city, le_industry, scaler
 
 model, le_role, le_city, le_industry, scaler = load_model_files()
@@ -61,8 +93,8 @@ def get_city_tier(city):
     return 1 if city in tier1 else 2 if city in tier2 else 3
 
 def predict_salary_ml(age, experience, city, role, education, industry):
-    city_tier       = get_city_tier(city)
-    edu_numeric     = edu_map.get(education, 2)
+    city_tier      = get_city_tier(city)
+    edu_numeric    = edu_map.get(education, 2)
     try: role_encoded = le_role.transform([role])[0]
     except: role_encoded = 0
     try: city_encoded = le_city.transform([city])[0]
@@ -82,77 +114,103 @@ def predict_salary_ml(age, experience, city, role, education, industry):
     return round(model.predict(input_data)[0], 2)
 
 # ============================================
-# Page Header
+# Header
 # ============================================
-st.title("💰 India Salary Predictor")
-st.write("ML-powered · 89% Accuracy · 5000 Indian employee records")
+col_title, col_share = st.columns([4, 1])
+
+with col_title:
+    st.title("💰 India Salary Predictor")
+    st.write("ML-powered · 89% Accuracy · 5000 Indian employee records")
+
+with col_share:
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("""
+    <a href="https://india-salary-predictor.onrender.com" target="_blank"
+    style="background:#1D9E75;color:white;padding:10px 18px;
+    border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">
+    🔗 Share App
+    </a>
+    """, unsafe_allow_html=True)
+
 st.markdown("---")
 
 # ============================================
-# Sidebar Inputs
+# Sidebar
 # ============================================
-st.sidebar.header("Your Details")
+st.sidebar.header("📋 Your Details")
+st.sidebar.markdown("---")
 
-age = st.sidebar.slider("Age", 22, 58, 28)
-experience = st.sidebar.slider("Years of Experience", 0, 28, 3)
+age = st.sidebar.slider("🎂 Age", 22, 58, 28)
+experience = st.sidebar.slider("💼 Years of Experience", 0, 28, 3)
 education = st.sidebar.selectbox(
-    "Education",
+    "🎓 Education",
     ['12th/Diploma', "Bachelor's", 'BCA', 'B.Tech',
      'MCA', 'MBA', 'M.Tech', 'PhD'], index=3
 )
 city = st.sidebar.selectbox(
-    "City",
+    "🏙️ City",
     ['Bangalore', 'Mumbai', 'Delhi', 'Gurgaon', 'Hyderabad',
      'Pune', 'Chennai', 'Kolkata', 'Jaipur', 'Ahmedabad',
      'Lucknow', 'Chandigarh', 'Indore', 'Bhopal', 'Nagpur']
 )
 role = st.sidebar.selectbox(
-    "Job Role",
+    "👨‍💻 Job Role",
     ['Software Developer', 'Full Stack Developer', 'Data Analyst',
      'Data Scientist', 'ML Engineer', 'AI Engineer', 'DevOps Engineer',
      'Cloud Engineer', 'Product Manager', 'HR Manager',
      'QA Tester', 'Business Analyst']
 )
 industry = st.sidebar.selectbox(
-    "Industry",
+    "🏢 Industry",
     ['IT MNC', 'IT Indian Company', 'Fintech', 'E-commerce',
      'Startup', 'Healthcare', 'Manufacturing', 'Government']
 )
 
-st.sidebar.button("Predict My Salary", type="primary")
+st.sidebar.markdown("---")
+st.sidebar.button("🔮 Predict My Salary", type="primary")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("**🤖 Model Info**")
+st.sidebar.markdown("Algorithm: Gradient Boosting")
+st.sidebar.markdown("Accuracy: **89%**")
+st.sidebar.markdown("Dataset: **5000 records**")
 
 # ============================================
 # Predictions
 # ============================================
-salary  = predict_salary_ml(age, experience, city, role, education, industry)
+with st.spinner("Calculating your salary..."):
+    salary  = predict_salary_ml(age, experience, city, role, education, industry)
+
 low     = round(salary * 0.85, 2)
 high    = round(salary * 1.18, 2)
 inhand  = round((salary * 100000 * 0.72) / 12)
 city_avg = city_avg_salary.get(city, 10)
+role_avg = role_avg_salary.get(role, 10)
 
 # ============================================
 # Top Metrics
 # ============================================
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Expected CTC",   f"₹{salary} LPA")
-col2.metric("Min Range",      f"₹{low} LPA")
-col3.metric("Max Range",      f"₹{high} LPA")
-col4.metric("In-hand/month",  f"₹{inhand:,}")
+col1.metric("💰 Expected CTC",   f"₹{salary} LPA",
+            delta=f"{round(((salary-city_avg)/city_avg)*100, 1)}% vs city avg")
+col2.metric("📉 Min Range",      f"₹{low} LPA")
+col3.metric("📈 Max Range",      f"₹{high} LPA")
+col4.metric("🏦 In-hand/month",  f"₹{inhand:,}")
 
 st.markdown("---")
 
 # ============================================
-# Charts
+# Charts Row 1
 # ============================================
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
-    st.subheader("Salary Gauge")
+    st.subheader("🎯 Salary Gauge")
     fig_gauge = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=salary,
-        title={'text': "Your Predicted Salary (LPA)"},
-        delta={'reference': city_avg},
+        title={'text': "Your Predicted Salary (LPA)", 'font': {'size': 14}},
+        delta={'reference': city_avg, 'suffix': ' vs city avg'},
         gauge={
             'axis': {'range': [0, 30]},
             'bar': {'color': "#1D9E75"},
@@ -171,10 +229,10 @@ with chart_col1:
     ))
     fig_gauge.update_layout(height=300, margin=dict(t=50, b=0))
     st.plotly_chart(fig_gauge, use_container_width=True)
-    st.caption(f"Red line = {city} average ({city_avg} LPA)")
+    st.caption(f"🔴 Red line = {city} city average ({city_avg} LPA)")
 
 with chart_col2:
-    st.subheader("City-wise Avg Salary")
+    st.subheader("🏙️ City-wise Avg Salary")
     city_df = pd.DataFrame({
         'City': list(city_avg_salary.keys()),
         'Avg Salary': list(city_avg_salary.values())
@@ -185,16 +243,19 @@ with chart_col2:
         orientation='h', marker_color=colors,
         text=city_df['Avg Salary'], textposition='outside'
     ))
-    fig_city.update_layout(height=380, margin=dict(t=10, b=10),
+    fig_city.update_layout(height=400, margin=dict(t=10, b=10),
                            xaxis_title="Avg Salary (LPA)")
     st.plotly_chart(fig_city, use_container_width=True)
 
 st.markdown("---")
 
+# ============================================
+# Charts Row 2
+# ============================================
 chart_col3, chart_col4 = st.columns(2)
 
 with chart_col3:
-    st.subheader("Your Salary Growth Over Time")
+    st.subheader("📈 Your Salary Growth Over Time")
     exp_range = list(range(0, 26))
     salary_growth = [predict_salary_ml(age, e, city, role, education, industry)
                      for e in exp_range]
@@ -203,16 +264,23 @@ with chart_col3:
         x=exp_range, y=salary_growth,
         mode='lines+markers',
         line=dict(color='#1D9E75', width=3),
-        marker=dict(size=5)
+        marker=dict(size=5),
+        fill='tozeroy',
+        fillcolor='rgba(29,158,117,0.1)'
     ))
-    fig_growth.add_vline(x=experience, line_dash="dash", line_color="red",
+    fig_growth.add_vline(x=experience, line_dash="dash",
+                         line_color="red",
                          annotation_text=f"You ({experience} yrs)")
-    fig_growth.update_layout(height=320, xaxis_title="Experience (Years)",
-                              yaxis_title="Salary (LPA)", margin=dict(t=10, b=10))
+    fig_growth.update_layout(
+        height=350,
+        xaxis_title="Experience (Years)",
+        yaxis_title="Salary (LPA)",
+        margin=dict(t=10, b=10)
+    )
     st.plotly_chart(fig_growth, use_container_width=True)
 
 with chart_col4:
-    st.subheader("Role-wise Avg Salary")
+    st.subheader("👨‍💻 Role-wise Avg Salary")
     role_df = pd.DataFrame({
         'Role': list(role_avg_salary.keys()),
         'Avg Salary': list(role_avg_salary.values())
@@ -223,145 +291,175 @@ with chart_col4:
         orientation='h', marker_color=colors_role,
         text=role_df['Avg Salary'], textposition='outside'
     ))
-    fig_role.update_layout(height=380, margin=dict(t=10, b=10),
+    fig_role.update_layout(height=400, margin=dict(t=10, b=10),
                            xaxis_title="Avg Salary (LPA)")
     st.plotly_chart(fig_role, use_container_width=True)
 
 st.markdown("---")
 
 # ============================================
-# SMART SUGGESTIONS SECTION
+# Smart Suggestions
 # ============================================
-st.header("💡 Smart Suggestions to Increase Your Salary")
+st.header("💡 Smart Suggestions to Boost Your Salary")
+st.write("Based on your profile, here are personalized recommendations:")
 
 suggestions = []
 
-# City suggestion
-best_city = max(city_avg_salary, key=city_avg_salary.get)
-if city != best_city:
-    city_diff = round(city_avg_salary[best_city] - city_avg_salary.get(city, 10), 1)
-    sal_bangalore = predict_salary_ml(age, experience, 'Bangalore', role, education, industry)
-    city_boost = round(((sal_bangalore - salary) / salary) * 100, 1)
+if city != 'Bangalore':
+    sal_b = predict_salary_ml(age, experience, 'Bangalore', role, education, industry)
+    boost = round(((sal_b - salary) / salary) * 100, 1)
     suggestions.append({
-        'suggestion': f"Move to Bangalore",
-        'impact': f"+{city_boost}% salary boost",
-        'detail': f"Bangalore pays avg {city_avg_salary['Bangalore']} LPA vs {city} avg {city_avg_salary.get(city, 10)} LPA",
+        'icon': '🏙️',
+        'title': 'Move to Bangalore',
+        'impact': f'+{boost}%',
+        'detail': f'Get ₹{sal_b} LPA instead of ₹{salary} LPA',
         'color': '#1D9E75'
     })
 
-# Role suggestion
-best_role = max(role_avg_salary, key=role_avg_salary.get)
-if role != best_role:
-    sal_best_role = predict_salary_ml(age, experience, city, 'Product Manager', education, industry)
-    role_boost = round(((sal_best_role - salary) / salary) * 100, 1)
-    suggestions.append({
-        'suggestion': f"Switch to Product Manager",
-        'impact': f"+{role_boost}% salary boost",
-        'detail': f"Product Manager earns avg {role_avg_salary['Product Manager']} LPA",
-        'color': '#3498db'
-    })
+if role != 'Product Manager':
+    sal_pm = predict_salary_ml(age, experience, city, 'Product Manager', education, industry)
+    boost = round(((sal_pm - salary) / salary) * 100, 1)
+    if boost > 0:
+        suggestions.append({
+            'icon': '💼',
+            'title': 'Switch to Product Manager',
+            'impact': f'+{boost}%',
+            'detail': f'Earn ₹{sal_pm} LPA — highest paying role',
+            'color': '#3498db'
+        })
 
-# Experience suggestion
 sal_5yr = predict_salary_ml(age, min(experience + 5, 28), city, role, education, industry)
-exp_boost = round(((sal_5yr - salary) / salary) * 100, 1)
+boost_exp = round(((sal_5yr - salary) / salary) * 100, 1)
 suggestions.append({
-    'suggestion': f"Gain 5 more years experience",
-    'impact': f"+{exp_boost}% salary boost",
-    'detail': f"With {experience+5} years exp, expected salary: ₹{sal_5yr} LPA",
+    'icon': '⏰',
+    'title': '5 More Years Experience',
+    'impact': f'+{boost_exp}%',
+    'detail': f'With {experience+5} yrs exp → ₹{sal_5yr} LPA',
     'color': '#9b59b6'
 })
 
-# Education suggestion
-if education not in ['PhD', 'M.Tech', 'MBA']:
-    sal_mtech = predict_salary_ml(age, experience, city, role, 'M.Tech', industry)
-    edu_boost = round(((sal_mtech - salary) / salary) * 100, 1)
-    if edu_boost > 0:
+if education not in ['PhD', 'M.Tech']:
+    sal_mt = predict_salary_ml(age, experience, city, role, 'M.Tech', industry)
+    boost_edu = round(((sal_mt - salary) / salary) * 100, 1)
+    if boost_edu > 0:
         suggestions.append({
-            'suggestion': "Upgrade to M.Tech / MBA",
-            'impact': f"+{edu_boost}% salary boost",
-            'detail': f"Higher education can get you ₹{sal_mtech} LPA",
+            'icon': '🎓',
+            'title': 'Upgrade to M.Tech',
+            'impact': f'+{boost_edu}%',
+            'detail': f'Higher education → ₹{sal_mt} LPA',
             'color': '#e74c3c'
         })
 
-# Industry suggestion
 if industry != 'IT MNC':
     sal_mnc = predict_salary_ml(age, experience, city, role, education, 'IT MNC')
-    ind_boost = round(((sal_mnc - salary) / salary) * 100, 1)
-    if ind_boost > 0:
+    boost_ind = round(((sal_mnc - salary) / salary) * 100, 1)
+    if boost_ind > 0:
         suggestions.append({
-            'suggestion': "Switch to IT MNC",
-            'impact': f"+{ind_boost}% salary boost",
-            'detail': f"IT MNC pays ₹{sal_mnc} LPA vs your current ₹{salary} LPA",
+            'icon': '🏢',
+            'title': 'Switch to IT MNC',
+            'impact': f'+{boost_ind}%',
+            'detail': f'MNC pays ₹{sal_mnc} LPA vs ₹{salary} LPA',
             'color': '#f39c12'
         })
 
-# Display suggestions
-sug_cols = st.columns(len(suggestions))
+cols = st.columns(len(suggestions))
 for i, sug in enumerate(suggestions):
-    with sug_cols[i]:
+    with cols[i]:
         st.markdown(f"""
-        <div style="background:{sug['color']}20;border-left:4px solid {sug['color']};
-        padding:12px;border-radius:8px;height:140px">
-            <p style="font-weight:600;font-size:14px;margin:0">{sug['suggestion']}</p>
-            <p style="font-size:20px;font-weight:700;color:{sug['color']};margin:4px 0">
-                {sug['impact']}</p>
-            <p style="font-size:12px;color:gray;margin:0">{sug['detail']}</p>
+        <div style="background:{sug['color']}15;
+             border-left:4px solid {sug['color']};
+             border-radius:10px;padding:16px;
+             min-height:160px">
+            <div style="font-size:28px">{sug['icon']}</div>
+            <div style="font-weight:700;font-size:14px;
+                 margin:6px 0">{sug['title']}</div>
+            <div style="font-size:26px;font-weight:800;
+                 color:{sug['color']}">{sug['impact']}</div>
+            <div style="font-size:12px;color:gray;
+                 margin-top:6px">{sug['detail']}</div>
         </div>
         """, unsafe_allow_html=True)
 
 st.markdown("---")
 
 # ============================================
-# MARKET COMPARISON TABLE
+# Market Comparison
 # ============================================
 st.header("📊 Market Comparison")
 
-comparison_data = {
-    'Metric'         : ['Your Salary', 'City Average', 'Role Average', 'India Average'],
-    'Salary (LPA)'   : [salary, city_avg_salary.get(city, 10),
-                        role_avg_salary.get(role, 10), 10.5],
-    'vs You'         : ['-',
-                        f"{round(((city_avg_salary.get(city,10)-salary)/salary)*100,1)}%",
-                        f"{round(((role_avg_salary.get(role,10)-salary)/salary)*100,1)}%",
-                        f"{round(((10.5-salary)/salary)*100,1)}%"]
-}
+comp_col1, comp_col2 = st.columns(2)
 
-comp_df = pd.DataFrame(comparison_data)
-st.dataframe(comp_df, use_container_width=True, hide_index=True)
+with comp_col1:
+    comparison_data = {
+        'Metric'       : ['Your Salary', 'City Average',
+                          'Role Average', 'India Average'],
+        'Salary (LPA)' : [salary, city_avg, role_avg, 10.5],
+        'vs You'       : ['-',
+                          f"{round(((city_avg-salary)/salary)*100,1)}%",
+                          f"{round(((role_avg-salary)/salary)*100,1)}%",
+                          f"{round(((10.5-salary)/salary)*100,1)}%"]
+    }
+    comp_df = pd.DataFrame(comparison_data)
+    st.dataframe(comp_df, use_container_width=True, hide_index=True)
+
+with comp_col2:
+    fig_comp = go.Figure(go.Bar(
+        x=['Your Salary', 'City Average', 'Role Average', 'India Average'],
+        y=[salary, city_avg, role_avg, 10.5],
+        marker_color=['#1D9E75', '#3498db', '#9b59b6', '#e74c3c'],
+        text=[f'₹{v}L' for v in [salary, city_avg, role_avg, 10.5]],
+        textposition='outside'
+    ))
+    fig_comp.update_layout(height=280, margin=dict(t=20, b=10),
+                           yaxis_title="Salary (LPA)",
+                           showlegend=False)
+    st.plotly_chart(fig_comp, use_container_width=True)
 
 st.markdown("---")
 
 # ============================================
-# DOWNLOAD REPORT
+# Download Report
 # ============================================
 st.header("📥 Download Your Salary Report")
 
 report_data = {
-    'Field'     : ['Age', 'Experience', 'Education', 'City', 'Role',
-                   'Industry', 'Expected CTC', 'Min Range', 'Max Range',
-                   'In-hand Monthly', 'City Average', 'Role Average'],
-    'Value'     : [f"{age} years", f"{experience} years", education,
-                   city, role, industry,
-                   f"₹{salary} LPA", f"₹{low} LPA", f"₹{high} LPA",
-                   f"₹{inhand:,}/month",
-                   f"₹{city_avg_salary.get(city,10)} LPA",
-                   f"₹{role_avg_salary.get(role,10)} LPA"]
+    'Field': ['Age', 'Experience', 'Education', 'City', 'Role',
+              'Industry', 'Expected CTC', 'Min Range', 'Max Range',
+              'In-hand Monthly', 'City Average', 'Role Average',
+              'India Average'],
+    'Value': [f"{age} years", f"{experience} years", education,
+              city, role, industry,
+              f"₹{salary} LPA", f"₹{low} LPA", f"₹{high} LPA",
+              f"₹{inhand:,}/month",
+              f"₹{city_avg} LPA", f"₹{role_avg} LPA",
+              "₹10.5 LPA"]
 }
 
 report_df = pd.DataFrame(report_data)
 
 csv_buffer = io.StringIO()
 report_df.to_csv(csv_buffer, index=False)
-csv_data = csv_buffer.getvalue()
 
-st.download_button(
-    label="⬇️ Download Salary Report (CSV)",
-    data=csv_data,
-    file_name="my_salary_report.csv",
-    mime="text/csv"
-)
+col_dl1, col_dl2 = st.columns([1, 3])
+with col_dl1:
+    st.download_button(
+        label="⬇️ Download CSV Report",
+        data=csv_buffer.getvalue(),
+        file_name=f"salary_report_{city}_{role}.csv",
+        mime="text/csv"
+    )
 
 st.dataframe(report_df, use_container_width=True, hide_index=True)
 
 st.markdown("---")
-st.caption("Built with Python, Scikit-learn, Plotly and Streamlit | Day 21 of 35-day project")
+
+# ============================================
+# Footer
+# ============================================
+st.markdown("""
+<div style="text-align:center;padding:20px;color:gray">
+    <p>🤖 Built with Python · Scikit-learn · Streamlit · Plotly</p>
+    <p>📊 Gradient Boosting Model · 89% Accuracy · 5000 Indian Records</p>
+    
+</div>
+""", unsafe_allow_html=True)
